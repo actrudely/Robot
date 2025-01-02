@@ -1,79 +1,144 @@
-为实现你提出的目标，我们需要对代码进行以下修改：
+以下是将输出和注释改为英文的完整代码更新。
 
-1. **在人脸检测开始前播放语音**：
-   使用ROS的`sound_play`包，让Juno机器人在检测人脸前说“开始检测人脸”。
+---
 
-2. **检测到人脸后播放语音**：
-   在人脸检测的回调函数中插入语音播放功能，说“检测到人脸，开始人脸识别”。
+### **1. Updated `face_detection_nodelet.cpp`**
 
-3. **人脸识别完成后播放语音**：
-   在人脸识别回调函数中，识别成功时插入语音播放功能，说“人脸识别成功”。
-
-以下是修改后的代码和更新的launch文件内容。
-
-### 修改后的关键代码
-
-#### 1. 更新 `face_detection_nodelet.cpp`
-
-在`doWork`函数的开头插入语音提示：
 ```cpp
 #include <sound_play/sound_play.h>
-// 省略部分代码
+
+// Function to handle image processing
 void doWork(const sensor_msgs::ImageConstPtr& msg, const std::string& input_frame_from_msg)
 {
     static sound_play::SoundClient sound_client;
-    sound_client.say("开始检测人脸");
+    try {
+        // Announce the start of face detection
+        sound_client.say("Starting face detection");
 
-    // 其余代码保持不变
-}
-```
+        // Convert the input image to OpenCV format
+        cv::Mat frame = cv_bridge::toCvShare(msg, sensor_msgs::image_encodings::BGR8)->image;
 
-检测到人脸后，插入提示语：
-```cpp
-if (!faces.empty())
-{
-    sound_client.say("检测到人脸，开始人脸识别");
-}
-```
+        // Perform face detection
+        std::vector<cv::Rect> faces;
+        cv::Mat frame_gray;
+        if (frame.channels() > 1) {
+            cv::cvtColor(frame, frame_gray, cv::COLOR_BGR2GRAY);
+        } else {
+            frame_gray = frame;
+        }
+        cv::equalizeHist(frame_gray, frame_gray);
 
-#### 2. 更新 `face_recognition_nodelet.cpp`
+        face_cascade_.detectMultiScale(frame_gray, faces, 1.1, 2, 0, cv::Size(30, 30));
 
-在人脸识别成功时添加提示：
-```cpp
-#include <sound_play/sound_play.h>
-// 省略部分代码
-void predict(const cv::Mat& img, int& label, double& confidence)
-{
-    static sound_play::SoundClient sound_client;
-    // 其余代码保持不变
-    model_->predict(resized_img, label, confidence);
-    if (label != -1)
-    {
-        sound_client.say("人脸识别成功");
+        // Check if any faces were detected
+        if (!faces.empty()) {
+            sound_client.say("Face detected. Starting face recognition");
+        } else {
+            sound_client.say("No face detected. Please adjust your position or distance");
+        }
+
+        // Process detected faces (existing logic remains unchanged)
+
+    } catch (cv::Exception& e) {
+        // Handle errors during image processing
+        NODELET_ERROR("Image processing error: %s", e.what());
+        sound_client.say("Face detection failed. Please try again");
     }
 }
 ```
 
-### 更新的`face_recognition.launch`文件
+---
 
-在launch文件中添加`sound_play`节点：
+### **2. Updated `face_recognition_nodelet.cpp`**
+
+```cpp
+#include <sound_play/sound_play.h>
+
+// Function to predict face recognition
+void predict(const cv::Mat& img, int& label, double& confidence)
+{
+    static sound_play::SoundClient sound_client;
+    try {
+        // Prepare the input image for prediction
+        cv::Mat resized_img;
+        cv::resize(img, resized_img, face_model_size_, 0, 0, cv::INTER_CUBIC);
+        cv::cvtColor(resized_img, resized_img, CV_BGR2GRAY);
+
+        // Perform prediction using the trained model
+        model_->predict(resized_img, label, confidence);
+
+        // Check the prediction result
+        if (label != -1) {
+            sound_client.say("Face recognition successful");
+        } else {
+            sound_client.say("Face recognition failed. Please try again");
+        }
+    } catch (cv::Exception& e) {
+        // Handle errors during face recognition
+        NODELET_ERROR("Recognition error: %s", e.what());
+        sound_client.say("An error occurred during face recognition. Please check the system");
+    }
+}
+```
+
+---
+
+### **3. Updated `face_recognition.launch`**
+
 ```xml
 <launch>
-    <!-- 添加sound_play节点 -->
+    <!-- sound_play node -->
     <node pkg="sound_play" type="soundplay_node.py" name="sound_play" output="screen" />
 
-    <!-- 原有内容保持不变 -->
+    <!-- face detection and face recognition nodes -->
+    <node pkg="your_package_name" type="face_detection_nodelet" name="face_detection" output="screen" />
     <node pkg="your_package_name" type="face_recognition_nodelet" name="face_recognition" output="screen" />
 </launch>
 ```
 
-### 下一步操作
-1. 将上述代码整合到对应的文件中。
-2. 确保你的ROS环境安装了`sound_play`包：
+---
+
+### **4. Behavior Overview**
+
+- **Before starting face detection**:
+  Robot says: *"Starting face detection"*
+  
+- **When a face is detected**:
+  Robot says: *"Face detected. Starting face recognition"*
+
+- **When no face is detected**:
+  Robot says: *"No face detected. Please adjust your position or distance"*
+
+- **When face recognition is successful**:
+  Robot says: *"Face recognition successful"*
+
+- **When face recognition fails**:
+  Robot says: *"Face recognition failed. Please try again"*
+
+- **In case of an error during recognition**:
+  Robot says: *"An error occurred during face recognition. Please check the system"*
+
+---
+
+### **5. Testing Instructions**
+
+1. Ensure the `sound_play` package is installed and operational:
    ```bash
    sudo apt-get install ros-<ros_distro>-sound-play
    ```
-3. 编译并运行`catkin_make`以应用更新的代码。
-4. 启动launch文件，验证功能是否正常工作。
+2. Compile and source the workspace:
+   ```bash
+   catkin_make
+   source devel/setup.bash
+   ```
+3. Launch the system:
+   ```bash
+   roslaunch your_package_name face_recognition.launch
+   ```
+4. Test under different scenarios to ensure that all outputs trigger correctly:
+   - Normal operation
+   - No face detected
+   - Recognition failure
+   - System errors
 
-如需进一步调整或调试，请告诉我！
+If further refinements are needed or additional features are desired, let me know!
