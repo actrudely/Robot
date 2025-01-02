@@ -1,0 +1,79 @@
+为实现你提出的目标，我们需要对代码进行以下修改：
+
+1. **在人脸检测开始前播放语音**：
+   使用ROS的`sound_play`包，让Juno机器人在检测人脸前说“开始检测人脸”。
+
+2. **检测到人脸后播放语音**：
+   在人脸检测的回调函数中插入语音播放功能，说“检测到人脸，开始人脸识别”。
+
+3. **人脸识别完成后播放语音**：
+   在人脸识别回调函数中，识别成功时插入语音播放功能，说“人脸识别成功”。
+
+以下是修改后的代码和更新的launch文件内容。
+
+### 修改后的关键代码
+
+#### 1. 更新 `face_detection_nodelet.cpp`
+
+在`doWork`函数的开头插入语音提示：
+```cpp
+#include <sound_play/sound_play.h>
+// 省略部分代码
+void doWork(const sensor_msgs::ImageConstPtr& msg, const std::string& input_frame_from_msg)
+{
+    static sound_play::SoundClient sound_client;
+    sound_client.say("开始检测人脸");
+
+    // 其余代码保持不变
+}
+```
+
+检测到人脸后，插入提示语：
+```cpp
+if (!faces.empty())
+{
+    sound_client.say("检测到人脸，开始人脸识别");
+}
+```
+
+#### 2. 更新 `face_recognition_nodelet.cpp`
+
+在人脸识别成功时添加提示：
+```cpp
+#include <sound_play/sound_play.h>
+// 省略部分代码
+void predict(const cv::Mat& img, int& label, double& confidence)
+{
+    static sound_play::SoundClient sound_client;
+    // 其余代码保持不变
+    model_->predict(resized_img, label, confidence);
+    if (label != -1)
+    {
+        sound_client.say("人脸识别成功");
+    }
+}
+```
+
+### 更新的`face_recognition.launch`文件
+
+在launch文件中添加`sound_play`节点：
+```xml
+<launch>
+    <!-- 添加sound_play节点 -->
+    <node pkg="sound_play" type="soundplay_node.py" name="sound_play" output="screen" />
+
+    <!-- 原有内容保持不变 -->
+    <node pkg="your_package_name" type="face_recognition_nodelet" name="face_recognition" output="screen" />
+</launch>
+```
+
+### 下一步操作
+1. 将上述代码整合到对应的文件中。
+2. 确保你的ROS环境安装了`sound_play`包：
+   ```bash
+   sudo apt-get install ros-<ros_distro>-sound-play
+   ```
+3. 编译并运行`catkin_make`以应用更新的代码。
+4. 启动launch文件，验证功能是否正常工作。
+
+如需进一步调整或调试，请告诉我！
