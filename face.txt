@@ -1,144 +1,36 @@
-以下是将输出和注释改为英文的完整代码更新。
-
----
-
-### **1. Updated `face_detection_nodelet.cpp`**
-
-```cpp
-#include <sound_play/sound_play.h>
-
-// Function to handle image processing
-void doWork(const sensor_msgs::ImageConstPtr& msg, const std::string& input_frame_from_msg)
-{
-    static sound_play::SoundClient sound_client;
-    try {
-        // Announce the start of face detection
-        sound_client.say("Starting face detection");
-
-        // Convert the input image to OpenCV format
-        cv::Mat frame = cv_bridge::toCvShare(msg, sensor_msgs::image_encodings::BGR8)->image;
-
-        // Perform face detection
-        std::vector<cv::Rect> faces;
-        cv::Mat frame_gray;
-        if (frame.channels() > 1) {
-            cv::cvtColor(frame, frame_gray, cv::COLOR_BGR2GRAY);
-        } else {
-            frame_gray = frame;
-        }
-        cv::equalizeHist(frame_gray, frame_gray);
-
-        face_cascade_.detectMultiScale(frame_gray, faces, 1.1, 2, 0, cv::Size(30, 30));
-
-        // Check if any faces were detected
-        if (!faces.empty()) {
-            sound_client.say("Face detected. Starting face recognition");
-        } else {
-            sound_client.say("No face detected. Please adjust your position or distance");
-        }
-
-        // Process detected faces (existing logic remains unchanged)
-
-    } catch (cv::Exception& e) {
-        // Handle errors during image processing
-        NODELET_ERROR("Image processing error: %s", e.what());
-        sound_client.say("Face detection failed. Please try again");
-    }
-}
-```
-
----
-
-### **2. Updated `face_recognition_nodelet.cpp`**
-
-```cpp
-#include <sound_play/sound_play.h>
-
-// Function to predict face recognition
-void predict(const cv::Mat& img, int& label, double& confidence)
-{
-    static sound_play::SoundClient sound_client;
-    try {
-        // Prepare the input image for prediction
-        cv::Mat resized_img;
-        cv::resize(img, resized_img, face_model_size_, 0, 0, cv::INTER_CUBIC);
-        cv::cvtColor(resized_img, resized_img, CV_BGR2GRAY);
-
-        // Perform prediction using the trained model
-        model_->predict(resized_img, label, confidence);
-
-        // Check the prediction result
-        if (label != -1) {
-            sound_client.say("Face recognition successful");
-        } else {
-            sound_client.say("Face recognition failed. Please try again");
-        }
-    } catch (cv::Exception& e) {
-        // Handle errors during face recognition
-        NODELET_ERROR("Recognition error: %s", e.what());
-        sound_client.say("An error occurred during face recognition. Please check the system");
-    }
-}
-```
-
----
-
-### **3. Updated `face_recognition.launch`**
-
-```xml
-<launch>
-    <!-- sound_play node -->
-    <node pkg="sound_play" type="soundplay_node.py" name="sound_play" output="screen" />
-
-    <!-- face detection and face recognition nodes -->
-    <node pkg="your_package_name" type="face_detection_nodelet" name="face_detection" output="screen" />
-    <node pkg="your_package_name" type="face_recognition_nodelet" name="face_recognition" output="screen" />
-</launch>
-```
-
----
-
-### **4. Behavior Overview**
-
-- **Before starting face detection**:
-  Robot says: *"Starting face detection"*
-  
-- **When a face is detected**:
-  Robot says: *"Face detected. Starting face recognition"*
-
-- **When no face is detected**:
-  Robot says: *"No face detected. Please adjust your position or distance"*
-
-- **When face recognition is successful**:
-  Robot says: *"Face recognition successful"*
-
-- **When face recognition fails**:
-  Robot says: *"Face recognition failed. Please try again"*
-
-- **In case of an error during recognition**:
-  Robot says: *"An error occurred during face recognition. Please check the system"*
-
----
-
-### **5. Testing Instructions**
-
-1. Ensure the `sound_play` package is installed and operational:
-   ```bash
-   sudo apt-get install ros-<ros_distro>-sound-play
-   ```
-2. Compile and source the workspace:
-   ```bash
-   catkin_make
-   source devel/setup.bash
-   ```
-3. Launch the system:
-   ```bash
-   roslaunch your_package_name face_recognition.launch
-   ```
-4. Test under different scenarios to ensure that all outputs trigger correctly:
-   - Normal operation
-   - No face detected
-   - Recognition failure
-   - System errors
-
-If further refinements are needed or additional features are desired, let me know!
+[INFO] [1736766781.491235]: Launch config: pulsesrc device=4
+[INFO] [1736766781.496539]: Loading Whisper model...
+[INFO] [1736766805.470162]: Whisper model loaded on CPU.
+[INFO] [1736766805.472055]: Starting recognizer... 
+[INFO] [1736766805.481392]: Recognizer started and pipeline is PLAYING.
+Due to a bug fix in https://github.com/huggingface/transformers/pull/28687 transcription using a multilingual Whisper will default to language detection followed by transcription instead of translation to English.This might be a breaking change for your use case. If you want to instead always translate your audio to English, make sure to pass `language='en'`.
+Passing a tuple of `past_key_values` is deprecated and will be removed in Transformers v4.43.0. You should pass an instance of `EncoderDecoderCache` instead, e.g. `past_key_values=EncoderDecoderCache.from_legacy_cache(past_key_values)`.
+The attention mask is not set and cannot be inferred from input because pad token is same as eos token. As a consequence, you may observe unexpected behavior. Please pass your input's `attention_mask` to obtain reliable results.
+[INFO] [1736766805.910982]: Transcription:  you
+[INFO] [1736766806.205864]: Transcription:  you
+[INFO] [1736766806.530035]: Transcription:  you
+[INFO] [1736766806.850685]: Transcription:  you
+[INFO] [1736766807.163872]: Transcription:  you
+[INFO] [1736766807.464714]: Transcription:  you
+[INFO] [1736766807.762887]: Transcription:  you
+[INFO] [1736766808.055769]: Transcription:  you
+[INFO] [1736766808.356558]: Transcription:  you
+[INFO] [1736766808.658010]: Transcription:  you
+[INFO] [1736766808.964639]: Transcription:  you
+[INFO] [1736766809.269970]: Transcription:  you
+[INFO] [1736766809.569756]: Transcription:  you
+[INFO] [1736766809.867646]: Transcription:  you
+[INFO] [1736766810.166183]: Transcription:  you
+[INFO] [1736766810.467246]: Transcription:  you
+[INFO] [1736766810.766018]: Transcription:  you
+[INFO] [1736766811.065482]: Transcription:  you
+[INFO] [1736766811.357956]: Transcription:  you
+[INFO] [1736766811.654724]: Transcription:  you
+^C[speech_to_text_whisper-2] killing on exit
+[INFO] [1736766811.962362]: Transcription:  you
+[INFO] [1736766812.278742]: Transcription:  you
+terminate called without an active exception
+[rosout-1] killing on exit
+[master] killing on exit
+shutting down processing monitor...
+... shutting down processing monitor complete
